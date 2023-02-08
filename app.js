@@ -14,7 +14,7 @@ var contatoRouter = require("./routes/contato");
 var db = require("./config/db.config");
 
 var app = express();
-const port = process.env.PORT || 3001;
+
 // config dotenv and sequelize
 dotenv.config();
 db.sync();
@@ -80,7 +80,5 @@ app.use(function (err, req, res, next) {
   res.status(err.status || 500);
   res.render("error");
 });
-
-app.listen(port);
 
 module.exports = app;
