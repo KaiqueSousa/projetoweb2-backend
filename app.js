@@ -14,7 +14,7 @@ var contatoRouter = require("./routes/contato");
 var db = require("./config/db.config");
 
 var app = express();
-
+const port = process.env.PORT || 3001;
 // config dotenv and sequelize
 dotenv.config();
 db.sync();
@@ -48,7 +48,7 @@ var options = {
   apis: ["./routes/user.js", "./routes/contato.js"],
 };
 var swaggerSpec = swaggerJSDoc(options);
-const port = process.env.PORT || 3001;
+
 // view engine setup
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "jade");
