@@ -17,20 +17,73 @@ exports.userCreate = async (req, res) => {
   } catch (err) {
     res.json({ message: err.message });
   }
-
+  console.log(user == null)
   if (user != null) {
     return res.status(400).json({ message: "E-mail já cadastrado." });
   }
 
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(req.body.password, salt);
-  const newUser = Object.assign({}, req.body);
-  newUser.password = hashedPassword;
+  try {
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(req.body.password, salt);
+    const newUser = Object.assign({}, req.body);
+    newUser.password = hashedPassword;
+
+    user = await User.create(newUser);
+    const token = jwt.sign({ userId: user.id }, process.env.TOKEN_SECRET, {
+      expiresIn: "1h",
+    });
+
+    sendgrid.setApiKey(process.env.SENDGRID_API_KEY);
+
+    const message = {
+      to: newUser.email,
+      from: process.env.EMAIL_REMETENTE,
+      subject: "Email de verificação de conta",
+      text: "Para confirmar seu cadastro clique no link abaixo.",
+      html: `<p>Olá ${user.username}! <a href="${process.env.HOST_URL}/confirmation?token=${token}"><b>Clique para confirmar seu cadastro</b></a></p>`,
+    };
+    await sendgrid
+      .send(message)
+      .then((res) => console.log(res))
+      .catch((error) => console.log(error.message));
+
+    res.json({ usuario: user.id, token: token });
+  } catch (err) {
+    res.json({ message: err.message });
+  }
+};
+
+//Registrar user pela página de Admin
+exports.userAdminCreate = async (req, res) => {
+  let user = null;
+  const isAdmin = req.header('isAdmin');
+  
+  if(isAdmin!=='true'){
+    return res.status(401).send('Access Denied');
+  }
+  try {
+    user = await User.findOne({
+      where: {
+        email: req.body.email,
+      },
+    });
+  } catch (err) {
+    res.json({ message: err.message });
+  }
+  console.log(user == null)
+  if (user != null) {
+    return res.status(400).json({ message: "E-mail já cadastrado." });
+  }
 
   try {
-    user = await User.create(newUser);
-    console.log(user);
 
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(req.body.password, salt);
+    const newUser = Object.assign({}, req.body);
+    newUser.password = hashedPassword;
+
+    user = await User.create(newUser);
     const token = jwt.sign({ userId: user.id }, process.env.TOKEN_SECRET, {
       expiresIn: "1h",
     });
@@ -89,14 +142,12 @@ exports.userLogin = async (req, res) => {
   } catch (err) {
     res.json({ message: err.message });
   }
-
-  if (!user.isVerified) {
-    return res.status(400).json({ message: "Email não confirmado." });
-  }
-
   const message = "E-mail ou senha inválidos.";
   if (user == null) {
     return res.status(400).json({ message: message });
+  }
+  if (!user.isVerified) {
+    return res.status(400).json({ message: "Email não confirmado." });
   }
   const validPassword = await bcrypt.compare(req.body.password, user.password);
   if (!validPassword) {
@@ -104,7 +155,7 @@ exports.userLogin = async (req, res) => {
   }
 
   const token = jwt.sign({ id: user.id }, process.env.TOKEN_SECRET);
-  res.header("Token", token).json({ token: token });
+  res.header("Token", token).json({ token: token, isAdmin: user.isAdmin });
 };
 
 exports.deleteUsersNonVerified = async () => {
@@ -137,9 +188,15 @@ exports.deleteUsersNonVerified = async () => {
 };
 
 exports.usersList = async (req, res) => {
+  const isAdmin = req.header('isAdmin');
+  
+  if(isAdmin!=='true'){
+    return res.status(401).send('Access Denied');
+  }
+  
   try {
     const users = await User.findAll({
-      attributes: ["id", "username", "email", "isVerified"],
+      attributes: ["id", "username", "email", "isVerified","isAdmin"],
     });
 
     return res.status(200).json(users);
@@ -149,27 +206,33 @@ exports.usersList = async (req, res) => {
 };
 
 exports.updateUser = async (req, res) => {
+  
   try {
     const user = await User.update(req.body, {
       where: {
         id: req.params.id
       }
     });
-    res.status(204).send({user: user});
-  } catch(err) {
+    res.status(204).send({ user: user });
+  } catch (err) {
     res.send({ message: err.message });
   }
 };
 
 exports.deleteUser = async (req, res) => {
+  const isAdmin = req.header('isAdmin');
+  
+  if(isAdmin!=='true'){
+    return res.status(401).send('Access Denied');
+  }
   try {
     const user = await User.destroy({
       where: {
-          id: req.params.id
+        id: req.params.id
       }
     });
-    res.status(204).send({user: user});
-  } catch(err) {
+    res.status(204).send({ user: user });
+  } catch (err) {
     res.send({ message: err.message });
   }
 };

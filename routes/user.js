@@ -28,6 +28,8 @@ const userController = require("../controllers/userController");
  */
 router.post("/register", userController.userCreate);
 
+router.post("/admin/register", userController.userAdminCreate);
+
 /**
  * @swagger
  * /users/confirmation:
@@ -71,7 +73,7 @@ router.post("/login", userController.userLogin);
 
 router.get("/", verify, userController.usersList);
 
-router.put('/:id', verify, userController.updateUser);
+router.patch('/:id', verify, userController.updateUser);
 
 router.delete('/:id', verify, userController.deleteUser);
 
