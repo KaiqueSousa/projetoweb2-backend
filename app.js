@@ -41,6 +41,10 @@ var swaggerDefinition = {
       url: "http://localhost:3001",
       description: "Development server",
     },
+    {
+      url:"https://projetoweb2-backend-production.up.railway.app",
+      description:"Deploy",
+    },
   ],
 };
 var options = {
